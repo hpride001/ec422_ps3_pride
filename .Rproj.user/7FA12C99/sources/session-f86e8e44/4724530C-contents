@@ -112,3 +112,85 @@ can_gas |>
 # 2.7d. I chose to add geom_smooth() to make a smooth trend line running 
 # through the gas series which makes the pattern in the long run easier to see
 # apart from seasonal swings. 
+
+# ---- 3.1b Log of can_gas ----
+can_gas <- can_gas |>
+  mutate(log_volume = log(Volume))
+
+can_gas |>
+  autoplot(log_volume) +
+  labs(title = "Log of Canadian Gas Production", x = NULL, y = "log(Volume)") +
+  theme_minimal()
+
+# ---- 3.1c Log of NSA retail ----
+retail_nsa <- retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  mutate(log_sales = log(sales))
+
+retail_nsa |>
+  autoplot(sales) +
+  labs(title = "NSA Retail Sales (Level)", x = NULL, y = "Millions of dollars") +
+  theme_minimal()
+
+retail_nsa |>
+  autoplot(log_sales) +
+  labs(title = "NSA Retail Sales (Log)", x = NULL, y = "log(sales)") +
+  theme_minimal()
+
+#3.1a. There are seasonal swings in can_gas grow with the level being only in 
+# the first part of the sample. Using the within-year range shows it grows from
+# about 0.6 billion cubic meters to 3.7 from 1960-1980s. In 1990 and on it shrinks
+# even with rising production showing the swings are not proportional to the level
+
+#3.1b. Taking logs the trend is more curved. There is fast growth in the 1960s 
+# then slower and steadier growth later. The seasonal swings are similar sized from the 
+# 1960s to the 1980s but still become smaller after 1990s. Logs are a good choice
+# for can_gas because they make changes readable as percentages and they also
+# stabilize swings for the 30 years prior. They do not fix the problem though because 
+# the size changes for reasons that are not related to production level. 
+
+#3.1 c. The logging NSA retail sales is much stronger then can_gas. In levels the 
+# yearly swing doubles from $74 billion in 93 to $176 billion in 2025 which grows 
+# with level of sales. In logs the swing stays in a narrow range across the sample. 
+
+# ---- 3.2a Growth rates ----
+can_gas <- can_gas |>
+  mutate(
+    growth_direct  = 100 * difference(Volume) / lag(Volume),
+    growth_logdiff = 100 * difference(log_volume)
+  )
+
+can_gas |>
+  autoplot(growth_direct) +
+  labs(title = "Monthly Growth Rate: Canadian Gas Production", x = NULL, y = "Percent") +
+  theme_minimal()
+
+can_gas <- can_gas |>
+  mutate(growth_gap = abs(growth_direct - growth_logdiff))
+
+can_gas |>
+  autoplot(growth_gap) +
+  labs(title = "Gap: Exact Growth vs. Log-Difference Approximation", x = NULL, y = "Percentage points") +
+  theme_minimal()
+
+#3.2a. The log difference approximation is quite good for can_gas with the gap
+# averages 0.3 percentage points and is under 0.5 points in about 80% of the months. 
+# The largest in months with a large growth rate. This is when the approximate is worst. 
+
+# ---- 3.3 SA vs NSA growth ----
+retail_ts <- retail_ts |>
+  group_by_key() |>
+  mutate(growth_mom = 100 * difference(log(sales))) |>
+  ungroup()
+
+retail_ts |>
+  autoplot(growth_mom) +
+  labs(title = "Month-over-Month Growth: SA vs. NSA Retail Sales",
+       x = NULL, y = "Growth rate (%)", color = NULL) +
+  theme_minimal()
+
+#3.3. The growth rate (NSA) is a lot noisier then the SA one. It has a standard 
+# deviation is about 9.6 percentage points while SA is 1.7. It swings from 
+# +14% on average in December to -24% in January. These are predictable seasonal
+# pattern seen in 2.7 from the holiday spike so seasonal adjustment will remove 
+# the pattern. The SA growth is more real reflection of changes in the economy. 
