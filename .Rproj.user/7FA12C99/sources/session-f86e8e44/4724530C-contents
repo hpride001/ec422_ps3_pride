@@ -300,3 +300,53 @@ can_gas_fit |>
 # waves opposed to random scatter. The ACF is also very high 0.98 at lag 1 and then dies
 # out slowly still around 0.8 at lag 12. The LJ box test give a stat of 7774 and a 
 # p value of almost 0 so we reject the null of white noise at the 5% level. 
+
+# ---- 5.1 Expanding-window TS-CV ----
+gas_cv_fc <- can_gas |>
+  select(Month, Volume) |>
+  stretch_tsibble(.init = 240, .step = 1) |>
+  model(snaive = SNAIVE(Volume),
+        tslm = TSLM(log(Volume) ~ trend() + season())) |>
+  forecast(h = 1)
+
+gas_cv_fc |>
+  accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
+
+#5.1a. The first forcast from January 1980 and the last one is Feburary 
+# 2005 which is 302 forecasts total. The model is seasonal naive which is 
+# much more accurate. The MAE in this is 0.56 and the TSLM is 4.0 giving an 
+# RMSE of 0.7 versus 4.3. SNAIVE is the better choice. 
+
+# ---- 5.2 Diebold-Mariano test ----
+errs <- gas_cv_fc |>
+  as_tibble() |>
+  left_join(as_tibble(can_gas) |> select(Month, actual = Volume), by = "Month") |>
+  mutate(e = actual - .mean) |>
+  select(Month, .model, e) |>
+  pivot_wider(names_from = .model, values_from = e) |>
+  na.omit()
+
+forecast::dm.test(errs$snaive, errs$tslm, h = 1, power = 1)
+
+#5.2a. The Diebold Mariano stat is -31 and it has a p value below 2.2e-16 which 
+# we will strongly reject the null that the models will forecast equally as well. 
+# The negative sign shows that seasonal naive has smaller absolute errors so it 
+# is much more accurate compared to the trend plus seasonal dummies model. 
+
+# ---- 5.3 Rolling window ----
+gas_cv_fc_roll <- can_gas |>
+  select(Month, Volume) |>
+  slide_tsibble(.size = 240, .step = 1) |>
+  model(snaive = SNAIVE(Volume),
+        tslm = TSLM(log(Volume) ~ trend() + season())) |>
+  forecast(h = 1)
+
+gas_cv_fc_roll |>
+  accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
+
+#53.a. With rolling window the SNAIVE MAE and SNAIVE RSME are the same 0.56 and 0.7. The
+# TSLM will improve a lot having MAE = 2.1 and RSME = 2.4 but it is not as good as 
+# SNAIVE since SNAIVE did not change because it only uses the values from  a year 
+# prior. From part 4.4b we can see gas production didn't go in a straight line which is 
+# why TSLM improved here due to the plateau in the 70s-80s. The rolling window will
+# drop the old data and make the trend estimate from more recent and more relevant years. 
