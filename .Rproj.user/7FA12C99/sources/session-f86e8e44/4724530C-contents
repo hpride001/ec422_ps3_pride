@@ -13,6 +13,10 @@ retail_raw <- read_csv(
   )
 )
 
+# 2.2a: read_csv() read observation_date as <date> which means it guessed right.
+# since the dates are in ISO format which is YYYY-MM-DD. Also in 2.2b
+# we had to re read the file that had col_date() so we cant rely on R's guess.
+
 # ---- 2.3 Long format ----
 retail_raw_long <- retail_raw |>
   select(observation_date, RSAFS, RSAFSNA) |>
@@ -63,6 +67,16 @@ can_gas_q <- can_gas |>
 head(can_gas_q)
 can_gas_q |> autoplot(Volume)
 
+# 2.6b From 1990 the highest average production was in December (17.1 billion cubic meters)
+# January was also close behind with 17.0 and June had the lowest at 14.9. 
+# Production was the highest in the winter months and lowest in the summer. 
+# February also looks low with 15.3 but it could be because its only 28 days. 
+
+# 2.6d. Because gas production is a flow then each months volume will add to the total. 
+# The quarterly production is the sum of three months and the mean would only give average 
+# production within the quarter and not the total. The quarterly series is still seasonal
+# because Q1 and Q4 are constantly higher then Q2 and Q3.
+
 # ---- 2.7 Plots ----
 retail_ts |> autoplot(sales)
 
@@ -87,3 +101,14 @@ can_gas |>
   labs(title = "Canadian Gas Production with Smoothed Trend",
        x = NULL, y = "Billions of cubic meters") +
   theme_minimal()
+
+# 2.7b There is a sharp spike every December in the NSA series probably from 
+# holiday shopping which has a drop right after in January and February which 
+# repeats every year. The SA series does not have that pattern and is just a smooth
+# line in the middle of the NSA series. Both series do have the same upward trend and the 
+# same dip from the recession in 2008 / 2009 which is also shown in 2020. The
+# seasonal adjust only removes predictable things in the pattern. 
+
+# 2.7d. I chose to add geom_smooth() to make a smooth trend line running 
+# through the gas series which makes the pattern in the long run easier to see
+# apart from seasonal swings. 
