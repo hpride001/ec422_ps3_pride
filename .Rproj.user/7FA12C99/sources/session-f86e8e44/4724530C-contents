@@ -195,7 +195,7 @@ retail_ts |>
 # pattern seen in 2.7 from the holiday spike so seasonal adjustment will remove 
 # the pattern. The SA growth is more real reflection of changes in the economy.
 
-install.packages("seasonal")
+#install.packages("seasonal")
 
 # ---- 4.1 Season plots ----
 retail_ts |>
@@ -252,7 +252,7 @@ sa_compare |>
        x = NULL, y = "Difference (%)") +
   theme_minimal()
 
-#4.3c. December has the highest seasonal factor with sales about 20% 
+#4.3a. December has the highest seasonal factor with sales about 20% 
 # above trend in December in the 1990s. It falls 10% above the trend in 
 # more recent years. This shows that seasonal swings have gotten smaller
 # holiday shopping is smaller proably because people shop online more now. 
@@ -292,7 +292,7 @@ can_gas_fit |>
 # 25% lower compared to January. All the dummies from June-September are negative. 
 
 #4.4b. The fitted line shows the upward trend and regular seasonal pattern. It does 
-# not show the swings around the trend. It is too high in the 19t60s and 
+# not show the swings around the trend. It is too high in the 1960s and 
 # too low during the 70/80s. Its seasonal swings are too big after the 1990s when 
 # the actual swings shrank. 
 
@@ -344,7 +344,7 @@ gas_cv_fc_roll <- can_gas |>
 gas_cv_fc_roll |>
   accuracy(can_gas, measures = list(MAE = MAE, RMSE = RMSE))
 
-#53.a. With rolling window the SNAIVE MAE and SNAIVE RSME are the same 0.56 and 0.7. The
+#5.3a. With rolling window the SNAIVE MAE and SNAIVE RSME are the same 0.56 and 0.7. The
 # TSLM will improve a lot having MAE = 2.1 and RSME = 2.4 but it is not as good as 
 # SNAIVE since SNAIVE did not change because it only uses the values from  a year 
 # prior. From part 4.4b we can see gas production didn't go in a straight line which is 
