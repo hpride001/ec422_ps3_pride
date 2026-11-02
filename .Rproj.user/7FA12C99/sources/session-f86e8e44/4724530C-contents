@@ -193,4 +193,110 @@ retail_ts |>
 # deviation is about 9.6 percentage points while SA is 1.7. It swings from 
 # +14% on average in December to -24% in January. These are predictable seasonal
 # pattern seen in 2.7 from the holiday spike so seasonal adjustment will remove 
-# the pattern. The SA growth is more real reflection of changes in the economy. 
+# the pattern. The SA growth is more real reflection of changes in the economy.
+
+install.packages("seasonal")
+
+# ---- 4.1 Season plots ----
+retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  gg_season(sales) +
+  labs(title = "Seasonal Pattern in NSA Retail Sales", y = "Millions of dollars") +
+  theme_minimal()
+
+retail_ts |>
+  filter(series_id == "RSAFS") |>
+  gg_season(sales) +
+  labs(title = "Seasonal Pattern in SA Retail Sales", y = "Millions of dollars") +
+  theme_minimal()
+
+can_gas |>
+  gg_season(log_volume) +
+  labs(title = "Seasonal Pattern in Canadian Gas Production", y = "log(Volume)") +
+  theme_minimal()
+
+#4.1b The NSA season plot every years line has the same shape which is a big 
+# jump in December and a drop in January. The lines are higher each year because
+# of the trend. In SA season plot each years line is almost flat across months 
+# We removed the repeating within-year pattern so whats left is the trend. 
+
+#4.1c. The Canadian gas production is the highest in winter months and it is 
+# lowest in the summer ones. This fits because gas is used for heating so 
+# there is more demand in the colder weather. 
+
+# ---- 4.2 Subseries plot ----
+can_gas |>
+  gg_subseries(log_volume) +
+  labs(title = "Subseries Plot: Canadian Gas Production", y = "log(Volume)")
+
+# ---- 4.3 X-13 ----
+retail_nsa_x13 <- retail_ts |>
+  filter(series_id == "RSAFSNA") |>
+  model(x13 = X_13ARIMA_SEATS(sales)) |>
+  components()
+retail_nsa_x13 |> autoplot()
+
+sa_compare <- retail_nsa_x13 |>
+  as_tibble() |>
+  select(Month, mine = season_adjust) |>
+  left_join(
+    retail_ts |> filter(series_id == "RSAFS") |> as_tibble() |>
+      transmute(Month, census = sales),
+    by = "Month") |>
+  mutate(pct_diff = 100 * (log(mine) - log(census)))
+
+sa_compare |>
+  ggplot(aes(x = Month, y = pct_diff)) +
+  geom_line() +
+  labs(title = "My X-13 Seasonal Adjustment Minus the Census Bureau's",
+       x = NULL, y = "Difference (%)") +
+  theme_minimal()
+
+#4.3c. December has the highest seasonal factor with sales about 20% 
+# above trend in December in the 1990s. It falls 10% above the trend in 
+# more recent years. This shows that seasonal swings have gotten smaller
+# holiday shopping is smaller proably because people shop online more now. 
+
+#4.3b. My X-13 matches the official series. The difference is usually within 
+# about +-0.5% both ways. The biggest difference is around 2020 to 2023 which is 
+# probably due to Census using custom settings and adjusts each retail category
+# on its own. 
+
+# ---- 4.4 Trend + seasonal dummies ----
+can_gas_fit <- can_gas |>
+  model(TSLM(log_volume ~ trend() + season()))
+report(can_gas_fit)
+
+can_gas_fit |>
+  tidy() |>
+  select(term, estimate, std.error, statistic, p.value) |>
+  knitr::kable(digits = 3)
+
+can_gas_fit |>
+  augment() |>
+  ggplot(aes(x = Month)) +
+  geom_line(aes(y = log_volume, color = "Actual")) +
+  geom_line(aes(y = .fitted, color = "Fitted")) +
+  labs(title = "Linear Trend + Seasonal Dummies Fit: Canadian Gas Production",
+       y = "log(Volume)", color = NULL) +
+  theme_minimal()
+
+can_gas_fit |> gg_tsresiduals()
+
+can_gas_fit |>
+  augment() |>
+  features(.innov, ljung_box, lag = 24)
+
+#4.4a. The trend coefficient is 0.004 which shows gas production grew 0.4% per month 
+# June has the highest seasonal effect with t = -4.78 and production in June is 
+# 25% lower compared to January. All the dummies from June-September are negative. 
+
+#4.4b. The fitted line shows the upward trend and regular seasonal pattern. It does 
+# not show the swings around the trend. It is too high in the 19t60s and 
+# too low during the 70/80s. Its seasonal swings are too big after the 1990s when 
+# the actual swings shrank. 
+
+#4.4c. The residuals are not white noise since the time plot shows a long slow
+# waves opposed to random scatter. The ACF is also very high 0.98 at lag 1 and then dies
+# out slowly still around 0.8 at lag 12. The LJ box test give a stat of 7774 and a 
+# p value of almost 0 so we reject the null of white noise at the 5% level. 
